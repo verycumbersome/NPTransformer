@@ -5,22 +5,32 @@ import numpy as np
 
 import nn
 
+path = os.path.dirname(__file__)
+
+
+# def pos_encoding(sequence):
+    # for 
+
 
 def get_embeddings(languages):
-    # Download and prep language word embeddings
+    """Download and prep language word embeddings"""
     embeddings = {}
     for lang in languages:
-        embed_path = "cc."+lang+".300.bin"
+        embed_path = os.path.join(path, "data/cc."+lang+".300.bin")
 
-        if not os.path.exists(embed_path):
+        if os.path.exists(embed_path):
+            embeddings[lang] = fasttext.load_model(embed_path)
+            fasttext.util.reduce_model(embeddings[lang], 50)
+
+        else:
             fasttext.util.download_model(lang, if_exists="ignore")
 
-        # Move embeddings to data folder and reduce embeddings to dim 50
-        os.rename(embed_path, "data/" + embed_path)
-        os.remove(embed_path + ".gz")
+            # Move embeddings to data folder and reduce embeddings to dim 50
+            os.remove(embed_path + ".gz")
+            os.rename(embed_path, embed_path)
 
-        embeddings[lang] = fasttext.load_model("data/" + embed_path)
-        fasttext.util.reduce_model(embeddings[lang], 50)
+            embeddings[lang] = fasttext.load_model(embed_path)
+            fasttext.util.reduce_model(embeddings[lang], 50)
 
     return embeddings
 
@@ -48,9 +58,12 @@ class Model(nn.Net):
 if __name__=="__main__":
     net = Model()
 
-    embeddings = get_embeddings(["en", "fr"])
+    # embeddings = get_embeddings(["en", "fr"])
 
-    print(en.get_word_vector("hello"))
-    print(fr.get_word_vector("bonjour"))
+    # en = embeddings["en"]
+    # fr = embeddings["fr"]
+
+    # print(en.get_word_vector("hello"))
+    # print(fr.get_word_vector("bonjour"))
 
     # nn.train_model(net, train_data, test_data, num_epochs=20)
