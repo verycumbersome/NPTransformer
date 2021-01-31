@@ -69,12 +69,17 @@ class LinearLayer():
         self.biases = np.random.uniform(0, 1, self.out_size)
         self.X = []
 
-    def calc(self, x):
+    def __call__(self, x):
         """Function: z = Wx + b"""
         self.X = x
-
-        self.z = np.dot(self.weights, x) + self.biases
-        self.layer_output = sigmoid(self.z)
+        
+        if (x.shape[1] > 1):
+            self.z = np.matmul(self.weights, x.T)
+            self.layer_output = self.z
+            
+        else:
+            self.z = np.dot(self.weights, x) + self.biases
+            self.layer_output = sigmoid(self.z)
 
         return(self.layer_output)
 
@@ -83,7 +88,7 @@ class Net():
     def __init__(self):
         pass
 
-    def forward(self, x):
+    def __call__(self, x):
         """Get prediction from nueral net"""
         pass
 
