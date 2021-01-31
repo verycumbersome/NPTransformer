@@ -8,11 +8,7 @@ import nn
 path = os.path.dirname(__file__)
 
 
-# def pos_encoding(sequence):
-    # for 
-
-
-def get_embeddings(languages):
+def get_embeddings(languages, dim=512):
     """Download and prep language word embeddings"""
     embeddings = {}
     for lang in languages:
@@ -20,7 +16,7 @@ def get_embeddings(languages):
 
         if os.path.exists(embed_path):
             embeddings[lang] = fasttext.load_model(embed_path)
-            fasttext.util.reduce_model(embeddings[lang], 50)
+            fasttext.util.reduce_model(embeddings[lang], dim)
 
         else:
             fasttext.util.download_model(lang, if_exists="ignore")
@@ -30,7 +26,7 @@ def get_embeddings(languages):
             os.rename(embed_path, embed_path)
 
             embeddings[lang] = fasttext.load_model(embed_path)
-            fasttext.util.reduce_model(embeddings[lang], 50)
+            fasttext.util.reduce_model(embeddings[lang], dim)
 
     return embeddings
 
