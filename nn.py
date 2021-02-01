@@ -17,7 +17,7 @@ def sigmoid(x):
 
 def sigprime(x):
     """Derivative of sigmoid functions for a numpy array"""
-    return(sigmoid(x) * (np.ones(len(x)) - sigmoid(x)))
+    return(np.matmul(sigmoid(x) * (np.ones(len(x)) - sigmoid(x))))
 
 
 def normalize(array):
@@ -91,8 +91,10 @@ class Net():
         pass
 
     def backprop(self, pred, actual, alpha = 0.01):
-        t = np.zeros(len(pred))
-        t[actual] = 1
+        #t = np.zeros(len(pred))
+        #t[actual] = 1
+        t = actual
+        print(actual, pred)
 
         for l, L in enumerate(self.layers):
             # Find the error at each layer
@@ -119,7 +121,7 @@ class Net():
         # Get the weights at the next layer
         w = self.layers[l + 1].weights
 
-        return np.multiply(np.dot(w.T, self.delta(l + 1, t)), dA)
+        return np.multiply(np.matmul(w.T, self.delta(l + 1, t)), dA)
 
 
 def loss(pred, actual):
