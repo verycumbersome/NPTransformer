@@ -69,12 +69,12 @@ class LinearLayer():
         self.biases = np.random.uniform(0, 1, self.out_size)
         self.X = []
 
-    def __call__(self, x, bias=True):
+    def __call__(self, x):
         """Function: z = Wx + b"""
         self.X = x
         
         # Multiply by vector or dot product depending on if input is matrix or vector
-        self.z = np.matmul(self.weights, x.T) + (self.biases if (x.shape[1] == 1) else 0)
+        self.z = np.matmul(self.weights, x) + (self.biases if (x.shape[1] == 1) else 0)
             
         # Apply sigmoid only if output is a vector
         self.layer_output = sigmoid(self.z) if (x.shape[1] == 1) else self.z
