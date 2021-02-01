@@ -11,13 +11,23 @@ from dataclasses import dataclass
 
 
 def sigmoid(x):
-    """Sigmoid functions for a numpy array"""
+    """Sigmoid function for a numpy array"""
     return(np.array([1 / (1 + (math.e ** (-xi))) for xi in x]))
 
 
 def sigprime(x):
-    """Derivative of sigmoid functions for a numpy array"""
-    return(np.matmul(sigmoid(x) * (np.ones(len(x)) - sigmoid(x))))
+    """Derivative of sigmoid function for a numpy array"""
+    return(np.matmul(sigmoid(x), (np.ones(x.shape) - sigmoid(x)).T))
+
+
+def relu(x):
+    """ReLU function for a numpy array"""
+    return(np.maximum(0, x))
+
+
+def reluprime(x):
+    """Derivative of ReLU function for a numpy array"""
+    return(np.array(map(lambda k: 1 if k > 0 else 0, x)))
 
 
 def normalize(array):
@@ -62,8 +72,9 @@ class LinearLayer():
     in_size: int
     out_size: int
 
-    def __post_init__(self):
+    def __post_init__(self, activation=relu):
         # For each node in output layer, generate empty weights and biases
+        self.activation = activation
         self.weights = np.random.randn(self.out_size, self.in_size) * \
             np.sqrt(2 / self.in_size)
         self.biases = np.random.uniform(0, 1, self.out_size)
@@ -77,14 +88,26 @@ class LinearLayer():
         self.z = np.matmul(self.weights, x) + (self.biases if (x.shape[1] == 1) else 0)
             
         # Apply sigmoid only if output is a vector
-        self.layer_output = sigmoid(self.z) if (x.shape[1] == 1) else self.z
+        self.layer_output = self.activation(self.z)
 
         return(self.layer_output)
+    
+    def delta(t, inner):
+        pred = self.layer_output
+        G = (pred - t) / (np.matmul(pred, (np.ones(pred.shape)) - pred))
+        S = self.activation_p(self.L2.z)
+        return np.multiply(G, S)
 
 
 class Net():
-    def __init__(self):
-        pass
+    def __init__(self, activation="ReLU"):
+        if (activation == "ReLU"):
+            self.activation = relu
+            self.activation_p = reluprime
+            
+        elif (activation == "Sigmoid"):
+            self.activation = sigmoid 
+            self.activation_p = sigprime 
 
     def __call__(self, x):
         """Get prediction from nueral net"""
@@ -110,12 +133,12 @@ class Net():
     def delta(self, l, t):
         """Find delta between each layer(l) and the target value(t)"""
         # Derivative of sigmoid(z) -> σ'(z) = σ(z)(1 - σ(z))
-        dA = sigprime(self.layers[l].z)
+        dA = self.activation(self.layers[l].z)
 
         if l == len(self.layers) - 1:
             pred = self.layers[l].layer_output
-            G = (pred - t) / (pred * (np.ones(len(pred)) - pred))
-            S = sigprime(self.L2.z)
+            G = (pred - t) / (np.matmul(pred, (np.ones(pred.shape)) - pred))
+            S = self.activation_p(self.L2.z)
             return np.multiply(G, S)
 
         # Get the weights at the next layer
