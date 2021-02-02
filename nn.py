@@ -27,7 +27,7 @@ def relu(x):
 
 def reluprime(x):
     """Derivative of ReLU function for a numpy array"""
-    return(np.array(map(lambda k: 1 if k > 0 else 0, x)))
+    return(np.clip(x, a_min=0, a_max=1))
 
 
 def normalize(array):
@@ -71,21 +71,32 @@ class MnistDataLoader():
 class LinearLayer():
     in_size: int
     out_size: int
-
+    depth: int = 1
+    
     def __post_init__(self, activation=relu):
         # For each node in output layer, generate empty weights and biases
         self.activation = activation
-        self.weights = np.random.randn(self.out_size, self.in_size) * \
-            np.sqrt(2 / self.in_size)
-        self.biases = np.random.uniform(0, 1, self.out_size)
+        
+        # Handle position-wise FFN and give depth to linear layer(useful for conv)
+        self.size = (self.out_size, self.in_size)
+        if self.depth > 1:
+            self.size += (self.depth,)
+        
+        self.weights = np.random.randn(*self.size) * np.sqrt(2 / self.in_size)
+        self.biases = np.random.uniform(0, 1, (self.out_size, self.depth))
         self.X = []
 
-    def __call__(self, x):
+    def __call__(self, x, pos=0):
         """Function: z = Wx + b"""
         self.X = x
         
         # Multiply by vector or dot product depending on if input is matrix or vector
-        self.z = np.matmul(self.weights, x) + (self.biases if (x.shape[1] == 1) else 0)
+        #self.z = np.matmul(self.weights, x) + (self.biases if (x.shape[1] == 1) else 0)
+        
+        print(x.shape)
+        self.z = np.einsum("ijk,jk->ik", self.weights, x)
+        print("z shape", self.z.shape)
+        print()
             
         # Apply sigmoid only if output is a vector
         self.layer_output = self.activation(self.z)
@@ -106,19 +117,14 @@ class Net():
             self.activation_p = reluprime
             
         elif (activation == "Sigmoid"):
-            self.activation = sigmoid 
-            self.activation_p = sigprime 
-
+            self.activation = sigmoid
+            self.activation_p = sigprime
+            
     def __call__(self, x):
         """Get prediction from nueral net"""
         pass
 
     def backprop(self, pred, actual, alpha = 0.01):
-        #t = np.zeros(len(pred))
-        #t[actual] = 1
-        t = actual
-        print(actual, pred)
-
         for l, L in enumerate(self.layers):
             # Find the error at each layer
             D = self.delta(l, t)
@@ -127,7 +133,7 @@ class Net():
             L.weights -= np.outer(D, L.X) * alpha
 
             # Update layer biases
-            L.biases -= D * alpha
+            L.biases -= np.sum(D, axis=1) * alpha
 
 
     def delta(self, l, t):
@@ -137,8 +143,9 @@ class Net():
 
         if l == len(self.layers) - 1:
             pred = self.layers[l].layer_output
-            G = (pred - t) / (np.matmul(pred, (np.ones(pred.shape)) - pred))
-            S = self.activation_p(self.L2.z)
+            
+            G = (pred - t) / ((pred * np.ones(pred.shape)) - pred)
+            S = self.activation_p(self.layers[-1].z)
             return np.multiply(G, S)
 
         # Get the weights at the next layer
@@ -147,16 +154,11 @@ class Net():
         return np.multiply(np.matmul(w.T, self.delta(l + 1, t)), dA)
 
 
-def loss(pred, actual):
+def loss(pred, actual, one_hot=False):
     """ Binary cross entropy loss.
     Function: −(𝑦log(𝑝)+(1−𝑦)log(1−𝑝))"""
     alpha = 0.01
     loss = 0
-    if actual > 9:
-        return 0
-
-    t = np.zeros(len(pred))
-    t[actual] = 1
 
     for i in range(len(t)):
         loss -= t[i] * math.log(pred[i]) + (1 - t[i]) * math.log(1 - pred[i])
