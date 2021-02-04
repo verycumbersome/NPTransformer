@@ -34,6 +34,19 @@ def normalize(array):
     return(array / np.sqrt(np.sum(array ** 2)))
 
 
+def cross_entropy(predictions, targets, epsilon=1e-12):
+    """
+    Computes cross entropy between targets (encoded as one-hot vectors)
+    and predictions. 
+    Input: predictions (N, k) ndarray
+           targets (N, k) ndarray        
+    Returns: scalar
+    """
+    predictions = np.clip(predictions, epsilon, 1. - epsilon)
+    N = predictions.shape[0]
+    ce = -np.sum(targets*np.log(predictions+1e-9))/N
+    return ce
+
 def softmax(x):
     """Compute softmax values for each sets of scores in x."""
     e_x = np.exp(x - np.max(x))
@@ -91,12 +104,7 @@ class LinearLayer():
         self.X = x
         
         # Multiply by vector or dot product depending on if input is matrix or vector
-        #self.z = np.matmul(self.weights, x) + (self.biases if (x.shape[1] == 1) else 0)
-        
-        print(x.shape)
         self.z = np.einsum("ijk,jk->ik", self.weights, x)
-        print("z shape", self.z.shape)
-        print()
             
         # Apply sigmoid only if output is a vector
         self.layer_output = self.activation(self.z)
@@ -124,7 +132,7 @@ class Net():
         """Get prediction from nueral net"""
         pass
 
-    def backprop(self, pred, actual, alpha = 0.01):
+    def backprop(self, pred, t, alpha = 0.01):
         for l, L in enumerate(self.layers):
             # Find the error at each layer
             D = self.delta(l, t)
@@ -153,15 +161,19 @@ class Net():
 
         return np.multiply(np.matmul(w.T, self.delta(l + 1, t)), dA)
 
-
-def loss(pred, actual, one_hot=False):
+    
+def loss(x, t):
     """ Binary cross entropy loss.
     Function: −(𝑦log(𝑝)+(1−𝑦)log(1−𝑝))"""
     alpha = 0.01
     loss = 0
+    
+    
+    for i in range(x.shape[1]):
+        loss += cross_entropy(x[:,i], t[:,i])
+    
+    print(loss)
 
-    for i in range(len(t)):
-        loss -= t[i] * math.log(pred[i]) + (1 - t[i]) * math.log(1 - pred[i])
 
     return(loss)
 
