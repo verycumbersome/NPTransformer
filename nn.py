@@ -34,19 +34,6 @@ def normalize(array):
     return(array / np.sqrt(np.sum(array ** 2)))
 
 
-def cross_entropy(predictions, targets, epsilon=1e-12):
-    """
-    Computes cross entropy between targets (encoded as one-hot vectors)
-    and predictions. 
-    Input: predictions (N, k) ndarray
-           targets (N, k) ndarray        
-    Returns: scalar
-    """
-    predictions = np.clip(predictions, epsilon, 1. - epsilon)
-    N = predictions.shape[0]
-    ce = -np.sum(targets*np.log(predictions+1e-9))/N
-    return ce
-
 def softmax(x):
     """Compute softmax values for each sets of scores in x."""
     e_x = np.exp(x - np.max(x))
@@ -162,15 +149,16 @@ class Net():
         return np.multiply(np.matmul(w.T, self.delta(l + 1, t)), dA)
 
     
-def loss(x, t):
+def loss(pred, target, epsilon=1e-12):
     """ Binary cross entropy loss.
     Function: −(𝑦log(𝑝)+(1−𝑦)log(1−𝑝))"""
     alpha = 0.01
     loss = 0
     
-    
-    for i in range(x.shape[1]):
-        loss += cross_entropy(x[:,i], t[:,i])
+    for i in range(pred.shape[1]):
+        x, t = pred.view()[:,i], target.view()[:,i]
+        x = np.clip(x, epsilon, 1. - epsilon)
+        loss -= np.sum(t * np.log(x+1e-9)) / x.shape[0]
     
     print(loss)
 
