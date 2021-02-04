@@ -91,7 +91,8 @@ class LinearLayer():
         self.X = x
         
         # Multiply by vector or dot product depending on if input is matrix or vector
-        self.z = np.einsum("ijk,jk->ik", self.weights, x)
+        ein_sum = "ijk,jk->ik" if (len(self.size) > 2) else "ik,kj->ij"
+        self.z = np.einsum(ein_sum, self.weights, x)
             
         # Apply sigmoid only if output is a vector
         self.layer_output = self.activation(self.z)
@@ -160,9 +161,6 @@ def loss(pred, target, epsilon=1e-12):
         x = np.clip(x, epsilon, 1. - epsilon)
         loss -= np.sum(t * np.log(x+1e-9)) / x.shape[0]
     
-    print(loss)
-
-
     return(loss)
 
 
