@@ -73,9 +73,10 @@ class LinearLayer():
     out_size: int
     depth: int = 1
     
-    def __post_init__(self, activation=relu):
+    def __post_init__(self, activation=relu, activation_p=reluprime):
         # For each node in output layer, generate empty weights and biases
         self.activation = activation
+        self.activation_p = activation_p
         
         # Handle position-wise FFN and give depth to linear layer(useful for conv)
         self.size = (self.out_size, self.in_size)
@@ -99,12 +100,14 @@ class LinearLayer():
 
         return(self.layer_output)
     
-    def delta(t, inner):
+    def delta(self, x, t):
         pred = self.layer_output
-        G = (pred - t) / (np.matmul(pred, (np.ones(pred.shape)) - pred))
-        S = self.activation_p(self.L2.z)
-        return np.multiply(G, S)
-
+        G = (pred - t) / ((pred * np.ones(pred.shape)) - pred)
+        S = self.activation_p(x)
+        print(S)
+        print(G)
+        return np.einsum("kj,ik->ij", G.T, S)
+    
 
 class Net():
     def __init__(self, activation="ReLU"):
@@ -121,33 +124,38 @@ class Net():
         pass
 
     def backprop(self, pred, t, alpha = 0.01):
-        for l, L in enumerate(self.layers):
-            # Find the error at each layer
-            D = self.delta(l, t)
+        for index in range(pred.shape[0] - 1):
+            for l, L in enumerate(self.layers):
+                # Find the error at each layer
+                D = self.delta(l, t, index)
 
-            # Update each layer weights given the error at each layer
-            L.weights -= np.outer(D, L.X) * alpha
+                # Update each layer weights given the error at each layer
+                L.weights[:,:,index] -= np.outer(D[:,index], L.X[:,index]) * alpha
 
-            # Update layer biases
-            L.biases -= np.sum(D, axis=1) * alpha
+                # Update layer biases
+                #L.biases -= np.sum(D, axis=1) * alpha
 
 
-    def delta(self, l, t):
+    def delta(self, l, t, index):
         """Find delta between each layer(l) and the target value(t)"""
         # Derivative of sigmoid(z) -> σ'(z) = σ(z)(1 - σ(z))
         dA = self.activation(self.layers[l].z)
 
         if l == len(self.layers) - 1:
-            pred = self.layers[l].layer_output
+            pred = self.layers[l].layer_output[:,index]
+            print("pred_shape", pred.shape)
+            print("tshape", t.shape)
             
-            G = (pred - t) / ((pred * np.ones(pred.shape)) - pred)
+            G = (pred - t[index:,]) / ((pred * np.ones(pred.shape)) - pred)
             S = self.activation_p(self.layers[-1].z)
-            return np.multiply(G, S)
+            print(G.shape)
+            print(S.shape)
+            return np.multiply(G.T, S)
 
         # Get the weights at the next layer
-        w = self.layers[l + 1].weights
-
-        return np.multiply(np.matmul(w.T, self.delta(l + 1, t)), dA)
+        w = self.layers[l + 1].weights[:,:,index]
+        
+        return np.multiply(np.dot(w.T, self.delta(l + 1, t, index)), dA)
 
     
 def loss(pred, target, epsilon=1e-12):
@@ -157,7 +165,7 @@ def loss(pred, target, epsilon=1e-12):
     loss = 0
     
     for i in range(pred.shape[1]):
-        x, t = pred.view()[:,i], target.view()[:,i]
+        x, t = pred.view()[:,i], target.view()[:,i].T
         x = np.clip(x, epsilon, 1. - epsilon)
         loss -= np.sum(t * np.log(x+1e-9)) / x.shape[0]
     
