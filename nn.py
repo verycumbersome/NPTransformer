@@ -73,7 +73,9 @@ class LinearLayer():
     out_size: int
     depth: int = 1
     
-    def __post_init__(self, activation=relu, activation_p=reluprime):
+    def __post_init__(self, activation=relu, activation_p=reluprime, eps=1e-12):
+        self.eps = eps
+        
         # For each node in output layer, generate empty weights and biases
         self.activation = activation
         self.activation_p = activation_p
@@ -100,14 +102,17 @@ class LinearLayer():
 
         return(self.layer_output)
     
-    def delta(self, x, t):
+    def delta(self, t):
         pred = self.layer_output
-        G = (pred - t) / ((pred * np.ones(pred.shape)) - pred)
-        S = self.activation_p(x)
+        
+        G = (pred - t) / ((pred * np.ones(pred.shape)) - pred + self.eps) 
+        S = self.activation_p(self.X)
         return np.einsum("kj,ik->ij", G.T, S)
     
 
 class Net():
+    """Neural net module"""
+    
     def __init__(self, activation="ReLU"):
         if (activation == "ReLU"):
             self.activation = relu
@@ -146,14 +151,17 @@ class Net():
             
             G = (pred - t[index:,]) / ((pred * np.ones(pred.shape)) - pred)
             S = self.activation_p(self.layers[-1].z)
-            print(G.shape)
-            print(S.shape)
             return np.multiply(G.T, S)
 
         # Get the weights at the next layer
         w = self.layers[l + 1].weights[:,:,index]
         
         return np.multiply(np.dot(w.T, self.delta(l + 1, t, index)), dA)
+    
+def cross_entropy(x, t):
+    epsilon=1e-12
+    x = np.clip(x, epsilon, 1. - epsilon)
+    return(np.sum(t * np.log(x+1e-9)) / x.shape[0] + epsilon)
 
     
 def loss(pred, target, epsilon=1e-12):
@@ -162,10 +170,10 @@ def loss(pred, target, epsilon=1e-12):
     alpha = 0.01
     loss = 0
     
-    for i in range(pred.shape[1]):
-        x, t = pred.view()[:,i], target.view()[:,i].T
-        x = np.clip(x, epsilon, 1. - epsilon)
-        loss -= np.sum(t * np.log(x+1e-9)) / x.shape[0]
+    print(pred.shape)
+    print(target.shape)
+    
+    loss += np.apply_along_axis(cross_entropy, 1, pred,  target).sum()
     
     return(loss)
 
