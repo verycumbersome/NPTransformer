@@ -104,8 +104,6 @@ class LinearLayer():
         pred = self.layer_output
         G = (pred - t) / ((pred * np.ones(pred.shape)) - pred)
         S = self.activation_p(x)
-        print(S)
-        print(G)
         return np.einsum("kj,ik->ij", G.T, S)
     
 
