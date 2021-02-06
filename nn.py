@@ -89,11 +89,13 @@ class LinearLayer():
         self.biases = np.random.uniform(0, 1, (self.out_size, self.depth))
         self.X = []
 
-    def __call__(self, x, pos=0):
+    def __call__(self, x):
         """Function: z = Wx + b"""
         self.X = x
         
         # Multiply by vector or dot product depending on if input is matrix or vector
+        print(self.weights.shape)
+        print(x.shape)
         ein_sum = "ijk,jk->ik" if (len(self.size) > 2) else "ik,kj->ij"
         self.z = np.einsum(ein_sum, self.weights, x)
             
@@ -106,7 +108,9 @@ class LinearLayer():
         pred = self.layer_output
         
         G = (pred - t) / ((pred * np.ones(pred.shape)) - pred + self.eps) 
-        S = self.activation_p(self.X)
+        S = self.activation_p(self.z)
+        print(G.shape)
+        print(S.shape)
         return np.einsum("kj,ik->ij", G.T, S)
     
 
@@ -150,7 +154,7 @@ class Net():
             print("tshape", t.shape)
             
             G = (pred - t[index:,]) / ((pred * np.ones(pred.shape)) - pred)
-            S = self.activation_p(self.layers[-1].z)
+            S = self.activation_p(self.layers[l].z)
             return np.multiply(G.T, S)
 
         # Get the weights at the next layer
@@ -158,24 +162,19 @@ class Net():
         
         return np.multiply(np.dot(w.T, self.delta(l + 1, t, index)), dA)
     
+    
 def cross_entropy(x, t):
+    """ Binary cross entropy loss.
+    Function: −(𝑦log(𝑝)+(1−𝑦)log(1−𝑝))"""
+    loss = 0
     epsilon=1e-12
     x = np.clip(x, epsilon, 1. - epsilon)
-    return(np.sum(t * np.log(x+1e-9)) / x.shape[0] + epsilon)
+    return(np.sum(t * np.log(x+1e-9)) / (x.shape[0] + epsilon))
 
     
 def loss(pred, target, epsilon=1e-12):
-    """ Binary cross entropy loss.
-    Function: −(𝑦log(𝑝)+(1−𝑦)log(1−𝑝))"""
-    alpha = 0.01
-    loss = 0
-    
-    print(pred.shape)
-    print(target.shape)
-    
-    loss += np.apply_along_axis(cross_entropy, 1, pred,  target).sum()
-    
-    return(loss)
+    """Loss summation function for """
+    return(np.apply_along_axis(cross_entropy, 1, pred,  target).sum())
 
 
 def train_model(model, train_data, val_data, num_epochs=20):
