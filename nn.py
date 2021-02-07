@@ -34,10 +34,17 @@ def normalize(array):
     return(array / np.sqrt(np.sum(array ** 2)))
 
 
+#def softmax(x):
+#    """Compute softmax values for each sets of scores in x."""
+#    e_x = np.exp(x - np.max(x))
+#    return e_x / e_x.sum(axis=0) # only difference
+
+
 def softmax(x):
-    """Compute softmax values for each sets of scores in x."""
-    e_x = np.exp(x - np.max(x))
-    return e_x / e_x.sum(axis=0) # only difference
+    """Compute the softmax of vector x in a numerically stable way."""
+    shiftx = x - np.max(x)
+    exps = np.exp(shiftx)
+    return exps / np.sum(exps)
 
 
 class MnistDataLoader():
@@ -85,6 +92,7 @@ class LinearLayer():
         if self.depth > 1:
             self.size += (self.depth,)
         
+        # Init weights and biases
         self.weights = np.random.randn(*self.size) * np.sqrt(2 / self.in_size)
         self.biases = np.random.uniform(0, 1, (self.out_size, self.depth))
         self.X = []
@@ -94,10 +102,8 @@ class LinearLayer():
         self.X = x
         
         # Multiply by vector or dot product depending on if input is matrix or vector
-        print(self.weights.shape)
-        print(x.shape)
         ein_sum = "ijk,jk->ik" if (len(self.size) > 2) else "ik,kj->ij"
-        self.z = np.einsum(ein_sum, self.weights, x)
+        self.z = np.einsum(ein_sum, self.weights, x) + self.biases
             
         # Apply sigmoid only if output is a vector
         self.layer_output = self.activation(self.z)
@@ -105,13 +111,21 @@ class LinearLayer():
         return(self.layer_output)
     
     def delta(self, t):
+        """Gets delta of layer for log loss"""
         pred = self.layer_output
         
+        # Derivative of layer given output from layer call
         G = (pred - t) / ((pred * np.ones(pred.shape)) - pred + self.eps) 
         S = self.activation_p(self.z)
-        print(G.shape)
-        print(S.shape)
-        return np.einsum("kj,ik->ij", G.T, S)
+        
+        x = np.multiply(G, S)
+        print(x.shape)
+        
+        # If linear layer is a tensor
+        if len(self.size) > 2:
+            return np.einsum("kj,ik->ij", G.T, S)
+        
+        return np.multiply(G, S)
     
 
 class Net():
