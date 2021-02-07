@@ -177,18 +177,26 @@ class Net():
         return np.multiply(np.dot(w.T, self.delta(l + 1, t, index)), dA)
     
     
-def cross_entropy(x, t):
-    """ Binary cross entropy loss.
-    Function: −(𝑦log(𝑝)+(1−𝑦)log(1−𝑝))"""
-    loss = 0
-    epsilon=1e-12
-    x = np.clip(x, epsilon, 1. - epsilon)
-    return(np.sum(t * np.log(x+1e-9)) / (x.shape[0] + epsilon))
+#def cross_entropy(x, t):
+#    """ Binary cross entropy loss.
+#    Function: −(𝑦log(𝑝)+(1−𝑦)log(1−𝑝))"""
+#    loss = 0
+#    epsilon=1e-12
+#    x = np.clip(x, epsilon, 1. - epsilon)
+#    return(np.sum(t * np.log(x+1e-9)) / (x.shape[0] + epsilon))
 
-    
-def loss(pred, target, epsilon=1e-12):
-    """Loss summation function for """
-    return(np.apply_along_axis(cross_entropy, 1, pred,  target).sum())
+def cross_entropy(predictions, targets, epsilon=1e-12):
+    """
+    Computes cross entropy between targets (encoded as one-hot vectors)
+    and predictions. 
+    Input: predictions (N, k) ndarray
+           targets (N, k) ndarray        
+    Returns: scalar
+    """
+    predictions = np.clip(predictions, epsilon, 1. - epsilon)
+    N = predictions.shape[0]
+    ce = -np.sum(targets*np.log(predictions+1e-9))/N
+    return ce
 
 
 def train_model(model, train_data, val_data, num_epochs=20):
